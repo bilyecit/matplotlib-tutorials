@@ -1,5 +1,6 @@
 import sys
 import matplotlib
+from scipy.constants.constants import alpha
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import legend
@@ -22,68 +23,76 @@ class CustomizeAxes(QMainWindow):
         self.mainCanvas.mpl_connect("pick_event", self.pick_event)
         
         topGroup = QGroupBox("line-styles")
-        lineStyle = QComboBox()
-        lineStyle.addItems(['==line style==','-', '--', '-.', ':'])
-        lineColor = QComboBox()
-        lineColor.addItems(['red', 'green','blue', 'yellow'])
-        lineAlpha = QSlider(Qt.Horizontal)
-        lineAlpha.setRange(1,10)
-        lineAlpha.setSingleStep(1)
+        self.lineStyle = QComboBox()
+        self.lineStyle.addItems(['==line style==','-', '--', '-.', ':'])
+        self.lineColor = QComboBox()
+        self.lineColor.addItems(['==line color==','red', 'green','blue', 'yellow'])
+        self.lineAlpha = QSlider(Qt.Horizontal)
+        self.lineAlpha.setRange(1,10)
+        self.lineAlpha.setSingleStep(1)
+        self.lineWidth = QSlider(Qt.Horizontal)
+        self.lineWidth.setRange(1,20)
+        self.lineWidth.setSingleStep(1)
         
-        lineStyle.currentTextChanged[str].connect(self.lineStyleChanged)
-        lineColor.currentTextChanged[str].connect(self.lineColorChanged)
-        lineAlpha.valueChanged[int].connect(self.lineAlphaChanged)
+        self.lineStyle.currentTextChanged[str].connect(self.lineStyleChanged)
+        self.lineColor.currentTextChanged[str].connect(self.lineColorChanged)
+        self.lineAlpha.valueChanged[int].connect(self.lineAlphaChanged)
+        self.lineWidth.valueChanged[int].connect(self.lineWidthChanged)
         
         tlayout = QVBoxLayout()
-        tlayout.addWidget(lineStyle)
-        tlayout.addWidget(lineColor)
-        tlayout.addWidget(lineAlpha)
+        tlayout.addWidget(self.lineStyle)
+        tlayout.addWidget(self.lineColor)
+        tlayout.addWidget(self.lineAlpha)
+        tlayout.addWidget(self.lineWidth)
         topGroup.setLayout(tlayout)
         
         legendGroup = QGroupBox("legend-control")
         lgdLayout = QVBoxLayout()
-        legend_visiable = QCheckBox('visible')
-        lgdPos = QComboBox()
-        lgdPos.addItems(['best',
+        self.legend_visiable = QCheckBox('visible')
+        self.legend_visiable.setChecked(True)
+        self.lgdPos = QComboBox()
+        self.lgdPos.addItems(['==legend loc==','best',
                 'upper right',
                 'upper left',
                 'lower left' ,
-                'lower right' ,
-                'right'           ,
-                'center left'     ,
-                'center right'   ,
-                'lower center'   ,
-                'upper center'   ,
+                'lower right',
+                'right',
+                'center left',
+                'center right',
+                'lower center',
+                'upper center',
                 'center' ])
-        lgdLayout.addWidget(legend_visiable)
-        lgdLayout.addWidget(lgdPos)
-        legend_visiable.clicked[bool].connect(self.legend_visible)
-        legend_visiable.clicked[bool].connect(lgdPos.setEnabled)
-        lgdPos.currentTextChanged[str].connect(self.legend_pos)
+        lgdLayout.addWidget(self.legend_visiable)
+        lgdLayout.addWidget(self.lgdPos)
+        self.legend_visiable.clicked[bool].connect(self.legend_visible)
+        self.legend_visiable.clicked[bool].connect(self.lgdPos.setEnabled)
+        self.lgdPos.currentTextChanged[str].connect(self.setLegendPosition)
         legendGroup.setLayout(lgdLayout)
         
         leftGroup = QGroupBox("left-axis")
-        l_check = QCheckBox("visible")
-        l_check.clicked[bool].connect(self.left_axis_visiable)
-        l_position = QSlider(Qt.Horizontal)
-        l_position.setRange(-3,3)
-        l_position.setSingleStep(1)
-        l_position.valueChanged[int].connect(self.left_axis_position_changed)
+        self.l_check = QCheckBox("visible")
+        self.l_check.setChecked(True)
+        self.l_check.clicked[bool].connect(self.left_axis_visiable)
+        self.l_position = QSlider(Qt.Horizontal)
+        self.l_position.setRange(-3,3)
+        self.l_position.setSingleStep(1)
+        self.l_position.valueChanged[int].connect(self.left_axis_position_changed)
         llayout = QVBoxLayout()
-        llayout.addWidget(l_check)
-        llayout.addWidget(l_position)
+        llayout.addWidget(self.l_check)
+        llayout.addWidget(self.l_position)
         leftGroup.setLayout(llayout)
         
         bottomGroup = QGroupBox("bottom-axis")
-        b_check = QCheckBox("visible")
-        b_check.clicked[bool].connect(self.bottom_axis_visiable)
-        b_position = QSlider(Qt.Horizontal)
-        b_position.setRange(-1,1)
-        b_position.setSingleStep(1)
-        b_position.valueChanged[int].connect(self.bottom_axis_position_changed)
+        self.b_check = QCheckBox("visible")
+        self.b_check.setChecked(True)
+        self.b_check.clicked[bool].connect(self.bottom_axis_visiable)
+        self.b_position = QSlider(Qt.Horizontal)
+        self.b_position.setRange(-1,1)
+        self.b_position.setSingleStep(1)
+        self.b_position.valueChanged[int].connect(self.bottom_axis_position_changed)
         blayout = QVBoxLayout()
-        blayout.addWidget(b_check)
-        blayout.addWidget(b_position)
+        blayout.addWidget(self.b_check)
+        blayout.addWidget(self.b_position)
         bottomGroup.setLayout(blayout)
         
         self.ctrlLayout = QHBoxLayout()
@@ -99,32 +108,29 @@ class CustomizeAxes(QMainWindow):
         self.setCentralWidget(self.mainWidget)
     
     def pick_event(self, event):
-        print(type(event))
+        line = event.artist
+        self.picked_line = line
+        style, color, alpha, width = line.get_linestyle(),line.get_color(),line.get_alpha(),line.get_linewidth()
+        print(style, color, alpha, width)
+        self.updateLineInfos(style, color, alpha, width)
     
     def draw(self):
         self.ax = self.mainfigure.add_subplot(111)
         x = np.linspace(-np.pi, np.pi, 256,endpoint=True)
-        line = self.ax.plot(x, np.sin(x), color='r' , label='sin(x)', picker=5)
+        line = self.ax.plot(x, np.sin(x), color='red' , label='sin(x)', picker=5, linewidth=1.0)
         self.line_sin = line[0]
-        line = self.ax.plot(x, np.cos(x), color='b' , label='cos(x)' )
+        line = self.ax.plot(x, np.cos(x), color='blue' , label='cos(x)', linewidth=1.0)
         self.line_cos = line[0]
         self.line_cos.set_picker(True)
         self.line_cos.set_picker(5)
-        
+        self.picked_line = self.line_sin
         self.ax.legend(loc='best')
         
         self.ax.set_xlim(x.min()*1.1, x.max()*1.1)
-        #self.ax.set_xticks([-np.pi, -np.pi/2, 0, np.pi/2,np.pi],[r'$-np.pi$', r'$-np.pi/2$', r'$0$', r'$np.pi/2$', r'$np.pi$'])
         self.ax.set_ylim(-1.1, 1.1)
-        #self.ax.set_yticks([-1, +1], [r'$-1$', r'$+1$'])
-        #plt.show()
         
         self.ax.spines['top'].set_visible(False)
         self.ax.spines['right'].set_visible(False)
-        #self.ax.spines['left'].set_position(('data',0))
-        #self.ax.spines['bottom'].set_position(('data',0))
-        #plt.xticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\pi/2$', r'$0$', r'$+\pi/2$', r'$+\pi$'])
-        #plt.yticks([-1, +1], [r'$-1$', r'$+1$'])
         
         self.ax.set_xticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi])
         self.ax.set_xticklabels([r'$-\pi$', r'$-\pi/2$', r'$0$', r'$+\pi/2$', r'$+\pi$'])
@@ -133,43 +139,69 @@ class CustomizeAxes(QMainWindow):
         
     def left_axis_visiable(self,  visible):
         self.ax.spines['left'].set_visible(visible)
-        self.mainCanvas.draw()
+        self.updateData()
 
     def left_axis_position_changed(self, val):
         self.ax.spines['left'].set_position(('data', val))
-        self.mainCanvas.draw()
+        self.updateData()
     
     def bottom_axis_visiable(self,  visible):
         print('@bottom_axis_visiable', visible)
         self.ax.spines['bottom'].set_visible(visible)
-        self.mainCanvas.draw()
+        self.updateData()
 
     def bottom_axis_position_changed(self, val):
         self.ax.spines['bottom'].set_position(('data', val))
-        self.mainCanvas.draw()
+        self.updateData()
         
     def legend_visible(self, visible):
         lgd = self.ax.get_legend()
         lgd.set_visible(visible)
-        self.mainCanvas.draw()
+        self.updateData()
     
-    def legend_pos(self, pos):
+    def setLegendPosition(self, pos):
+        if pos == '==legend loc==':
+            return
         self.ax.legend(loc=pos)
         self.mainCanvas.draw()
         
     def lineStyleChanged(self, style):
         if style == '==line style==':
             return
-        self.line_cos.set_linestyle(style)
-        self.mainCanvas.draw()
+        if self.picked_line:
+            self.picked_line.set_linestyle(style)
+        self.updateData()
     
     def lineColorChanged(self, color):
-        self.line_cos.set_color(color)
-        self.mainCanvas.draw()
+        if color == "==line color==":
+            return
+        if self.picked_line:
+            self.picked_line.set_color(color)
+            self.updateData()
         
     def lineAlphaChanged(self, val):
-        val = val/10
-        self.line_cos.set_alpha(val)
+        val /= 10
+        self.picked_line.set_alpha(val)
+        self.updateData()
+        
+    def lineWidthChanged(self, val):
+        val /= 2
+        self.picked_line.set_linewidth(val)
+        self.updateData()
+    
+    def updateLineInfos(self, style, color, alpha, width):
+        lineStyleList = ['==line style==','-', '--', '-.', ':']
+        lineColorList = ['==line color==','red', 'green','blue', 'yellow']
+        self.lineStyle.setCurrentIndex(lineStyleList.index(style))
+        self.lineColor.setCurrentIndex(lineColorList.index(color))
+        if alpha == None:
+            self.lineAlpha.setValue(self.lineAlpha.maximum())
+        else:
+            self.lineAlpha.setValue(int(alpha*10))
+            
+        self.lineWidth.setValue(int(2*width))
+
+    def updateData(self):
         self.mainCanvas.draw()
 
 def main():
@@ -180,6 +212,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
     
