@@ -1,2 +1,2 @@
 # matplotlib-tutorials
-a tutorial of matplotlib
+a tutorial of matplotlib.
