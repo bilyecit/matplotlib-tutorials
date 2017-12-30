@@ -1,6 +1,5 @@
 import sys
 import matplotlib
-from scipy.constants.constants import alpha
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import legend
@@ -111,7 +110,6 @@ class CustomizeAxes(QMainWindow):
         line = event.artist
         self.picked_line = line
         style, color, alpha, width = line.get_linestyle(),line.get_color(),line.get_alpha(),line.get_linewidth()
-        print(style, color, alpha, width)
         self.updateLineInfos(style, color, alpha, width)
     
     def draw(self):
@@ -121,10 +119,12 @@ class CustomizeAxes(QMainWindow):
         self.line_sin = line[0]
         line = self.ax.plot(x, np.cos(x), color='blue' , label='cos(x)', linewidth=1.0)
         self.line_cos = line[0]
-        self.line_cos.set_picker(True)
         self.line_cos.set_picker(5)
         self.picked_line = self.line_sin
         self.ax.legend(loc='best')
+        lgd_lc, lgd_ls = self.ax.get_legend().get_lines()
+        lgd_lc.set_picker(2)
+        lgd_ls.set_picker(2)
         
         self.ax.set_xlim(x.min()*1.1, x.max()*1.1)
         self.ax.set_ylim(-1.1, 1.1)
@@ -137,6 +137,13 @@ class CustomizeAxes(QMainWindow):
         self.ax.set_yticks([-1, +1])
         self.ax.set_yticklabels([r'$-1$', r'$+1$'])
         
+        self.ax.spines['left'].set_position(('data', self.l_position.value()))
+        self.ax.spines['bottom'].set_position(('data', self.b_position.value()))
+        
+        self.ax.set_title('This is Figure Title:\nmatplotlib demo', color='magenta')
+        #self.ax.set_xlabel('This X label', color='magenta')
+        #self.ax.set_ylabel('This is y label', color='magenta')
+        
     def left_axis_visiable(self,  visible):
         self.ax.spines['left'].set_visible(visible)
         self.updateData()
@@ -146,7 +153,6 @@ class CustomizeAxes(QMainWindow):
         self.updateData()
     
     def bottom_axis_visiable(self,  visible):
-        print('@bottom_axis_visiable', visible)
         self.ax.spines['bottom'].set_visible(visible)
         self.updateData()
 
@@ -212,7 +218,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-    
